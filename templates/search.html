@@ -1,0 +1,52 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>搜索页面</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <style>
+        .search-container {
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="row search-container justify-content-center align-items-center">
+        <div class="col-md-6">
+            <form id="searchForm" action="/search" method="GET">
+                <div class="form-group">
+                    <select class="form-control" id="searchType" name="search_type">
+                        <option value="id">按ID搜索</option>
+                        <option value="name">按名称搜索</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <input type="search"
+                           class="form-control"
+                           id="searchInput"
+                           name="search_term"
+                           placeholder="请输入搜索内容..."
+                           aria-label="搜索内容">
+
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i> 搜索
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,199 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>搜索结果</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            padding-bottom: 60px;
+        }
+        .content {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+        }
+        li {
+            padding: 12px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        li:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .item-info {
+            flex-grow: 1;
+        }
+        .stock {
+            color: #666;
+            margin: 0 15px;
+            font-size: 0.9em;
+        }
+        .reserve-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 80px;
+        }
+        .reserve-btn:hover:not(:disabled) {
+            background: #45a049;
+            transform: translateY(-1px);
+        }
+        .reserve-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .pagination {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .pagination a {
+            text-decoration: none;
+            color: #007bff;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .pagination a:hover {
+            background: #f8f9fa;
+        }
+        .pagination span {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    {% csrf_token %}
+    <div class="content">
+        <h1>搜索结果</h1>
+        <p>搜索类型：{{ search_type }}，关键词：<strong>{{ search_term }}</strong></p>
+
+        {% if page_obj %}
+            <ul>
+                {% for product in page_obj %}
+                    <li>
+                        <div class="item-info">
+                            {{ product.id }} - {{ product.name }}
+                            <span class="stock">库存: {{ product.num }}</span>
+                        </div>
+                        <button
+                            class="reserve-btn"
+                            data-product-id="{{ product.id }}"
+                            {% if product.num < 1 %}disabled{% endif %}
+                            onclick="handleReserve(this)"
+                        >
+                            {% if product.num > 0 %}预 定{% else %}已售罄{% endif %}
+                        </button>
+                    </li>
+                {% empty %}
+                    <li>未找到匹配结果</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+
+    {% if page_obj and page_obj.paginator.num_pages > 1 %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1&search_type={{ search_type }}&search_term={{ search_term }}">首页</a>
+                <a href="?page={{ page_obj.previous_page_number }}&search_type={{ search_type }}&search_term={{ search_term }}">上一页</a>
+            {% endif %}
+
+            <span>第 {{ page_obj.number }} 页 / 共 {{ page_obj.paginator.num_pages }} 页</span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&search_type={{ search_type }}&search_term={{ search_term }}">下一页</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}&search_type={{ search_type }}&search_term={{ search_term }}">尾页</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+<script>
+    function handleReserve(button) {
+        const productId = button.dataset.productId;
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const startTime = Date.now(); // 记录点击时间
+
+        button.disabled = true;
+        button.textContent = '处理中...';
+
+        fetch(`/reserve/${productId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+
+            // “处理中” 至少显示一秒，。
+            const elapsed = Date.now() - startTime;
+            const remainingDelay = Math.max(1000 - elapsed, 0);
+
+            setTimeout(() => {
+                if (data.success) {
+                    const stockSpan = button.closest('li').querySelector('.stock');
+                    const currentStock = parseInt(stockSpan.textContent.split(': ')[1]);
+                    const newStock = currentStock - 1;
+                    stockSpan.textContent = `库存: ${newStock}`;
+
+                    if (newStock < 1) {
+                        button.disabled = true;
+                        button.textContent = '已售罄';
+                    } else {
+                        button.disabled = false;
+                        button.textContent = '预 定';
+                    }
+                } else {
+                    alert(data.message || '预定失败，请重试');
+                    button.disabled = false;
+                    button.textContent = '预 定';
+                }
+            }, remainingDelay);
+        })
+        .catch(error => {
+            const elapsed = Date.now() - startTime;
+            const remainingDelay = Math.max(1000 - elapsed, 0);
+
+            setTimeout(() => {
+                console.error('Error:', error);
+                alert('请求失败，请检查网络连接');
+                button.disabled = false;
+                button.textContent = '预 定';
+            }, remainingDelay);
+        });
+    }
+</script>
+</body>
+</html>
